@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+    postgres:
+        image: postgres:16.2
+        container_name: postgres
+        restart: always
+        environment:
+            - POSTGRES_DB=postgres
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+        ports:
+            - 5432:5432
+
+    redis:
+        image: redis:7.4-rc-alpine
+        container_name: redis
+        restart: always
+        ports:
+            - 6379:6379
+
+    celery:
+        build: .
+        container_name: celery
+        restart: always
+        ports:
+            - 8000:8000
+        command: >
+            sh -c "celery -A worker worker -l INFO"
+        volumes:
+            - .:/code/
+        depends_on:
+            - redis
+
+    bot:
+        build: .
+        container_name: bot
+        restart: always
+        ports:
+            - 8001:8000
+        command: >
+            sh -c "python bot.py"
+        volumes:
+            - .:/code/
+        depends_on:
+            - postgres
+
+    scanner:
+        build: .
+        container_name: scanner
+        restart: always
+        ports:
+            - 8002:8000
+        command: >
+            sh -c "python scanner.py"
+        volumes:
+            - .:/code/
+        depends_on:
+            - redis
+            - celery

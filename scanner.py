@@ -72,7 +72,8 @@ def plot_chart():
     try:
         coins, values = zip(*history[-10:])
         plt.figure(figsize=(10, 4))
-        plt.bar(coins, values, color="green")
+        colors = ["green" if v >= 0 else "red" for v in values]
+        plt.bar(coins, values, color=colors)
         plt.title("ТОП 10 изменений за последние 10 минут")
         plt.ylabel("% Изменение")
         plt.xticks(rotation=45)
@@ -110,14 +111,17 @@ def scanner(minute):
             indicators = handler.get_analysis().indicators
             open_price = float(indicators["open"])
             close_price = float(indicators["close"])
+            rsi = indicators.get("RSI", None)
+            volume = indicators.get("volume", None)
+            macd = indicators.get("MACD.macd", None)
+            signal = indicators.get("MACD.signal", None)
+
         except Exception:
             continue
 
-        r_open.rpush(coin, open_price)
-        if r_open.llen(coin) > INTERVAL_IN_MINUTE:
-            r_open.lpop(coin)
-
-        open_stored = float(r_open.lindex(coin, 0) or open_price)
+        r_open.lpush(f"{coin}:history", open_price)
+        r_open.ltrim(f"{coin}:history", 0, 9)  # хранить только 10 последних
+        open_stored = float(r_open.lindex(f"{coin}:history", 0) or open_price)
         change = (close_price - open_stored) / open_stored * 100
 
         # PUMP/DUMP логика
@@ -126,13 +130,16 @@ def scanner(minute):
             logging.info(msg)
             send_signal.delay(coin, msg)
             send_alert(msg)
-            r_open.delete(coin)
+            r_open.delete(f"{coin}:history")
+
         elif change <= -PERCENT:
             msg = f"🔴 {coin} DUMP {change:.2f}%"
             logging.info(msg)
             send_signal.delay(coin, msg)
             send_alert(msg)
-            r_open.delete(coin)
+            r_open.delete(f"{coin}:history")
+            logging.info(f"{coin} | Change: {change:.2f}% | RSI: {rsi} | Volume: {volume} | MACD: {macd} | Signal: {signal}")
+
 
         if abs(change) > max_change:
             max_change = abs(change)

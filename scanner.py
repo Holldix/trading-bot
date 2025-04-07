@@ -13,7 +13,6 @@ from worker.tasks import send_signal, create_table
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-ALERT_WEBHOOK = os.getenv("ALERT_WEBHOOK")
 LOG_FILE = os.getenv("LOG_FILE", "log.txt")
 PERCENT = float(os.getenv("PERCENT", 3))
 

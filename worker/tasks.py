@@ -1,4 +1,4 @@
-importimport telebot
+import telebot
 import os
 import sys
 import logging
